@@ -2,7 +2,7 @@ use nom::{
     IResult,
     branch::alt,
     bytes::complete::{tag, take_while1},
-    combinator::{opt, recognize}, multi::many1, character::complete::char, sequence::pair,
+    combinator::{opt, recognize}, multi::many1, character::complete::char, sequence::pair, error::ParseError, InputIter, AsChar,
 };
 use nom_unicode;
 
@@ -18,48 +18,34 @@ fn contraction(input: &str) -> IResult<&str, &str> {
     ))(input)
 }
 
-fn space_word(input: &str) -> IResult<&str, &str> {
+fn opt_preceding_space<I, O, E: ParseError<I>, F>(f: F) -> impl FnMut(I) -> IResult<I, I, E>
+where
+    I: Clone + nom::Slice<std::ops::RangeTo<usize>> + nom::Offset + nom::InputIter + nom::Slice<std::ops::RangeFrom<usize>>,
+    F: nom::Parser<I, O, E>, <I as InputIter>::Item: AsChar
+{
     recognize(
         pair(
             opt(char(' ')),
-            take_while1(|c: char| c.is_alphabetic()),
+            f,
         )
-    )(input)
-}
-
-fn space_word_alt(input: &str) -> IResult<&str, &str> {
-    let input_original = input;
-    let (input, space) = opt(char(' '))(input)?;
-    let (input, word) = take_while1(|c: char| c.is_alphabetic())(input)?;
-    let length_of_result = word.len() + (space.map_or(0, |_| 1));
-    //dbg!("sw");
-    Ok((input, &input_original[..length_of_result]))
+    )
 }
 
 fn space_contraction(input: &str) -> IResult<&str, &str> {
-    recognize(
-        pair(
-            opt(char(' ')),
-            contraction,
-        )
+    opt_preceding_space(
+        contraction
     )(input)
 }
 
 fn space_unicode_alpha1(input: &str) -> IResult<&str, &str> {
-    recognize(
-        pair(
-            opt(char(' ')),
-            nom_unicode::complete::alpha1,
-        )
+    opt_preceding_space(
+        nom_unicode::complete::alpha1,
     )(input)
 }
 
 fn space_unicode_digit1(input: &str) -> IResult<&str, &str> {
-    recognize(
-        pair(
-            opt(char(' ')),
-            nom_unicode::complete::digit1,
-        )
+    opt_preceding_space(
+        nom_unicode::complete::digit1,
     )(input)
 }
 
@@ -68,11 +54,8 @@ fn is_non_unicode_space_alphanumeric(chr: char) -> bool {
 }
 
 fn space_non_unicode_alphanumeric1(input: &str) -> IResult<&str, &str> {
-    recognize(
-        pair(
-            opt(char(' ')),
-            take_while1(is_non_unicode_space_alphanumeric)
-        )
+    opt_preceding_space(
+        take_while1(is_non_unicode_space_alphanumeric)
     )(input)
 }
 
