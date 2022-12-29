@@ -103,23 +103,28 @@ where T: nom::AsChar + Copy //TODO Or nom_unicode::IsChar?
     }
 }
 
+// Replaces bytes_to_unicode
 fn create_bpe_char_encoder<T>() -> HashMap<T, char>
 where T: nom::AsChar + Copy + std::hash::Hash + std::cmp::Eq + std::convert::From<u8> + std::fmt::Debug //TODO Or nom_unicode::IsChar?
 {
     let mut map: HashMap<T, char> = HashMap::new();
 
-    let n: u32 = 0; //Current offset
+    let mut n: u32 = 0; //Current offset
     for i in 0..=255 {
         let is_valid = is_valid_bpe_char(i);
         let cs: char = match is_valid {
-            true => i.into(),
-            false => char::from_u32(256 + n).unwrap(),
+            true => char::from_u32(i as u32).unwrap(),
+            false => {
+                let map_to = 256 + n;
+                n += 1;
+                char::from_u32(map_to).unwrap()
+            },
         };
 
         map.insert(i.into(), cs);
     }
 
-    dbg!(&map);
+//    dbg!(&map);
     return map
 }
 
@@ -127,21 +132,25 @@ fn create_bpe_char_decoder<T>() -> HashMap<char, T>
 where T: nom::AsChar + Copy + std::hash::Hash + std::cmp::Eq + std::convert::From<u8> + std::fmt::Debug //TODO Or nom_unicode::IsChar?
 {
     //TODO: Use create_bpe_char_encoder, and swap key/values?
+    //TODO: OR Refactor common itterator?
     let mut map: HashMap<char, T> = HashMap::new();
 
-    let n: u32 = 0; //Current offset
+    let mut n: u32 = 0; //Current offset
     for i in 0..=255 {
         let is_valid = is_valid_bpe_char(i);
         let cs: char = match is_valid {
-            true => i.into(),
-            false => char::from_u32(256 + n).unwrap(),
+            true => char::from_u32(i as u32).unwrap(),
+            false => {
+                let map_to = 256 + n;
+                n += 1;
+                char::from_u32(map_to).unwrap()
+            },
         };
 
         map.insert(cs, i.into());
     }
 
-    dbg!(&map);
-
+//    dbg!(&map);
     return map
 }
 
@@ -154,5 +163,5 @@ fn main() {
     dbg!(bpe_char_encoder[&('A' as u8)]);
 
     let bpe_char_encoder = create_bpe_char_encoder::<char>();
-    dbg!(bpe_char_encoder[&'!']);
+    dbg!(bpe_char_encoder[&' ']);
 }
