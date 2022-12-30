@@ -1,1 +1,4 @@
 /target
+encoder.json
+vocab.bpe
+bpe_commented.py
