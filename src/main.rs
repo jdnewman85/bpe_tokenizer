@@ -167,14 +167,78 @@ where T: AsRef<Path>
 }
 
 type BpeWord = Vec<String>;
-fn generate_consecutive_pairs(word: BpeWord) -> HashSet<BpePair> {
+fn generate_consecutive_pairs(word: &BpeWord) -> HashSet<BpePair> {
     word.windows(2).map(|w| (w[0].to_owned(), w[1].to_owned())).collect()
 }
 
-fn bpe_words_from_string<T>(s: T) -> BpeWord
+fn bpe_word_from_string<T>(s: T) -> BpeWord
 where T: Into<String>,
 {
     s.into().chars().map(|c| c.to_string()).collect()
+}
+
+//TODO Rename
+fn bpe(token: String) -> String {
+    //TODO Cache
+
+
+    let mut word = bpe_word_from_string(&token);
+    let mut pairs = generate_consecutive_pairs(&word);
+
+    if pairs.is_empty() {
+        return token;
+    }
+
+    //TODO Factor this out!!
+    let bpe_ranks = create_bpe_ranks("vocab.bpe").unwrap();
+    let bpe_ranks = bpe_ranks.into_iter().enumerate().fold(HashMap::new(), |mut map, bpe_rank| {
+        map.insert(bpe_rank.1, bpe_rank.0);
+        map
+    });
+
+    loop {
+        //min pair of all of
+        //For each in pairs
+        //get from bpe_ranks, or inf
+        let Some(bigram) = pairs.clone().into_iter().min_by_key(|pair| bpe_ranks.get(pair).unwrap_or(&std::usize::MAX)) else {
+            break;
+        };
+
+        let (first, second) = bigram;
+        let mut next_word: BpeWord = Vec::new();
+
+        let mut i = 0;
+        while i < word.len() {
+            if let Some(j) = word.clone().into_iter().skip(i).position(|sym| sym==first) {
+                let slice = word[i..j].to_vec();
+                next_word.extend(slice);
+                i = j
+            } else {
+                let slice = word[i..].to_vec();
+                next_word.extend(slice);
+                break;
+            }
+
+            if i < word.len()-1 && word[i+1] == second {
+                let combined = first.clone()+&second;
+                next_word.push(combined);
+                i += 2;
+            } else {
+                next_word.push(first.clone());
+                i += 1;
+            }
+        }
+
+        word = next_word;
+        if word.len() == 1 {
+            break;
+        }
+
+        pairs = generate_consecutive_pairs(&word);
+    }
+
+    let word = word.join(" ");
+    word
 }
 
 fn main() {
@@ -198,14 +262,39 @@ fn main() {
 //    let bpe_ranks = create_bpe_ranks("vocab.bpe");
 //    dbg!(&bpe_ranks);
 
-    let test_pairs = generate_consecutive_pairs(bpe_words_from_string("abcdefg"));
+    /*
+    let test_pairs = generate_consecutive_pairs(&bpe_word_from_string("abcdefg"));
     dbg!(test_pairs);
 
-    let test_pairs = generate_consecutive_pairs(vec![
+    let test_pairs = generate_consecutive_pairs(&vec![
         "This".to_string(),
         "is".to_string(),
         "a".to_string(),
         "test".to_string(),
     ]);
     dbg!(test_pairs);
+    */
+
+    //encode
+    let (_unmatched, pat_tokens) = pat("This is a test! y'all's allright?\nDo newlines work?!%? 1535").unwrap();
+
+    let bpe_char_encoder = create_bpe_char_encoder::<char>();
+    let bpe_token_encoder = create_bpe_token_encoder("encoder.json").unwrap();
+
+    let mut bpe_tokens:Vec<u16> = Vec::new();
+
+    for token in pat_tokens {
+        let prepared_token:String = token.chars().map(|c| bpe_char_encoder[&c]).collect();
+        let bpe_results = bpe(prepared_token);
+        let new_bpe_tokens:Vec<u16> = bpe_results.split(" ").map(|new_token| {
+            dbg!(new_token);
+            let encoded_token = bpe_token_encoder[new_token];
+//            dbg!(encoded_token);
+            encoded_token
+        }).collect();
+        bpe_tokens.extend(new_bpe_tokens);
+    }
+
+    dbg!(bpe_tokens);
+
 }
