@@ -1,3 +1,6 @@
+use std::error::{self, Error};
+use std::io::Read;
+use std::{fs::File, path::Path};
 use std::collections::HashMap;
 
 use nom::{
@@ -116,6 +119,24 @@ where T: nom::AsChar + Copy + std::hash::Hash + std::cmp::Eq + std::convert::Fro
     return decoder
 }
 
+type BpeTokenEncoder = HashMap<String, u16>;
+fn create_bpe_token_encoder<T>(filename: T) -> Result<BpeTokenEncoder, std::io::Error>
+where T: AsRef<Path>
+{
+    /* TODO
+    * AsStr for filename
+    * Load encoder.json file into a map<&str/String, u16/u32?>
+    */
+
+    let mut file = File::open(filename)?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
+
+    let encoder: BpeTokenEncoder = serde_json::from_str(&contents)?;
+
+    Ok(encoder)
+}
+
 
 
 fn main() {
@@ -130,4 +151,7 @@ fn main() {
     let space_encoded = bpe_char_encoder[&' '];
     dbg!(space_encoded);
     dbg!(bpe_char_decoder[&space_encoded]);
+
+    let bpe_token_encoder = create_bpe_token_encoder("encoder.json").unwrap();
+    dbg!(&bpe_token_encoder);
 }
