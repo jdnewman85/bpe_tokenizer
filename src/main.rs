@@ -1,4 +1,3 @@
-use std::error::{self, Error};
 use std::io::Read;
 use std::{fs::File, path::Path};
 use std::collections::HashMap;
@@ -123,11 +122,7 @@ type BpeTokenEncoder = HashMap<String, u16>;
 fn create_bpe_token_encoder<T>(filename: T) -> Result<BpeTokenEncoder, std::io::Error>
 where T: AsRef<Path>
 {
-    /* TODO
-    * AsStr for filename
-    * Load encoder.json file into a map<&str/String, u16/u32?>
-    */
-
+    //TODO: Make more efficient
     let mut file = File::open(filename)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
@@ -137,6 +132,16 @@ where T: AsRef<Path>
     Ok(encoder)
 }
 
+type BpeTokenDecoder = HashMap<u16, String>;
+fn create_bpe_token_decoder<T>(filename: T) -> Result<BpeTokenDecoder, std::io::Error>
+where T: AsRef<Path>
+{
+    //TODO: Make more efficient
+    let encoder = create_bpe_token_encoder::<T>(filename).unwrap();
+    let decoder: BpeTokenDecoder = encoder.into_iter().map(|(k, v)| (v, k)).collect();
+
+    Ok(decoder)
+}
 
 
 fn main() {
@@ -154,4 +159,6 @@ fn main() {
 
     let bpe_token_encoder = create_bpe_token_encoder("encoder.json").unwrap();
     dbg!(&bpe_token_encoder);
+    let bpe_token_decoder = create_bpe_token_decoder("encoder.json").unwrap();
+    dbg!(&bpe_token_decoder);
 }
