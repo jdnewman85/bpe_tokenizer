@@ -126,5 +126,8 @@ fn main() {
     dbg!(bpe_char_encoder[&('A' as u8)]);
 
     let bpe_char_encoder = create_bpe_char_encoder::<char>();
-    dbg!(bpe_char_encoder[&' ']);
+    let bpe_char_decoder = create_bpe_char_decoder::<char>();
+    let space_encoded = bpe_char_encoder[&' '];
+    dbg!(space_encoded);
+    dbg!(bpe_char_decoder[&space_encoded]);
 }
