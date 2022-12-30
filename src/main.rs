@@ -1,6 +1,6 @@
-use std::io::{BufRead, Read, BufReader};
 use std::{fs::File, path::Path};
-use std::collections::HashMap;
+use std::io::{BufRead, Read, BufReader};
+use std::collections::{HashSet, HashMap};
 
 use nom::{
     branch::alt,
@@ -166,25 +166,46 @@ where T: AsRef<Path>
     Ok(ranks)
 }
 
+type BpeWord = Vec<String>;
+fn generate_consecutive_pairs(word: BpeWord) -> HashSet<BpePair> {
+    word.windows(2).map(|w| (w[0].to_owned(), w[1].to_owned())).collect()
+}
+
+fn bpe_words_from_string<T>(s: T) -> BpeWord
+where T: Into<String>,
+{
+    s.into().chars().map(|c| c.to_string()).collect()
+}
 
 fn main() {
     //println!("{:?}", pat("This is a test! y'all's allright?").unwrap());
-    dbg!(pat("This is a test! y'all's allright?\nDo newlines work?!%? 1535").unwrap());
+//    dbg!(pat("This is a test! y'all's allright?\nDo newlines work?!%? 1535").unwrap());
+//
+//    let bpe_char_encoder = create_bpe_char_encoder::<u8>();
+//    dbg!(bpe_char_encoder[&('A' as u8)]);
+//
+//    let bpe_char_encoder = create_bpe_char_encoder::<char>();
+//    let bpe_char_decoder = create_bpe_char_decoder::<char>();
+//    let space_encoded = bpe_char_encoder[&' '];
+//    dbg!(space_encoded);
+//    dbg!(bpe_char_decoder[&space_encoded]);
+//
+//    let bpe_token_encoder = create_bpe_token_encoder("encoder.json").unwrap();
+//    dbg!(&bpe_token_encoder);
+//    let bpe_token_decoder = create_bpe_token_decoder("encoder.json").unwrap();
+//    dbg!(&bpe_token_decoder);
+//
+//    let bpe_ranks = create_bpe_ranks("vocab.bpe");
+//    dbg!(&bpe_ranks);
 
-    let bpe_char_encoder = create_bpe_char_encoder::<u8>();
-    dbg!(bpe_char_encoder[&('A' as u8)]);
+    let test_pairs = generate_consecutive_pairs(bpe_words_from_string("abcdefg"));
+    dbg!(test_pairs);
 
-    let bpe_char_encoder = create_bpe_char_encoder::<char>();
-    let bpe_char_decoder = create_bpe_char_decoder::<char>();
-    let space_encoded = bpe_char_encoder[&' '];
-    dbg!(space_encoded);
-    dbg!(bpe_char_decoder[&space_encoded]);
-
-    let bpe_token_encoder = create_bpe_token_encoder("encoder.json").unwrap();
-    dbg!(&bpe_token_encoder);
-    let bpe_token_decoder = create_bpe_token_decoder("encoder.json").unwrap();
-    dbg!(&bpe_token_decoder);
-
-    let bpe_ranks = create_bpe_ranks("vocab.bpe");
-    dbg!(&bpe_ranks);
+    let test_pairs = generate_consecutive_pairs(vec![
+        "This".to_string(),
+        "is".to_string(),
+        "a".to_string(),
+        "test".to_string(),
+    ]);
+    dbg!(test_pairs);
 }
