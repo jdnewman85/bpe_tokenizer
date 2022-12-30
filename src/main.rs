@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::io::{BufRead, Read, BufReader};
 use std::{fs::File, path::Path};
 use std::collections::HashMap;
 
@@ -137,10 +137,33 @@ fn create_bpe_token_decoder<T>(filename: T) -> Result<BpeTokenDecoder, std::io::
 where T: AsRef<Path>
 {
     //TODO: Make more efficient
-    let encoder = create_bpe_token_encoder::<T>(filename).unwrap();
+    let encoder = create_bpe_token_encoder::<T>(filename)?;
     let decoder: BpeTokenDecoder = encoder.into_iter().map(|(k, v)| (v, k)).collect();
 
     Ok(decoder)
+}
+
+type BpePair = (String, String);
+type BpeRanks = Vec<BpePair>;
+fn create_bpe_ranks<T>(filename: T) -> Result<BpeRanks, std::io::Error>
+where T: AsRef<Path>
+{
+    //TODO: Make more efficient
+    let file = File::open(filename)?;
+    let reader = BufReader::new(file);
+
+    //First line is version comment, hence skip(1)
+    let num_comment_lines = 1;
+    let ranks: BpeRanks = reader.lines().skip(num_comment_lines).map(|line| {
+        let line = line.unwrap();
+        let mut split = line.split_whitespace();
+        (
+            split.next().unwrap().to_string(),
+            split.next().unwrap().to_string(),
+        )
+    }).collect();
+
+    Ok(ranks)
 }
 
 
@@ -161,4 +184,7 @@ fn main() {
     dbg!(&bpe_token_encoder);
     let bpe_token_decoder = create_bpe_token_decoder("encoder.json").unwrap();
     dbg!(&bpe_token_decoder);
+
+    let bpe_ranks = create_bpe_ranks("vocab.bpe");
+    dbg!(&bpe_ranks);
 }
