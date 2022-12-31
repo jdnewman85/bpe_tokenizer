@@ -2,6 +2,8 @@ use std::collections::{HashMap, HashSet};
 use std::io::{BufRead, BufReader, Read};
 use std::{fs::File, path::Path};
 
+use rayon::prelude::*;
+
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while1},
@@ -147,7 +149,7 @@ type BpeTokenDecoder = HashMap<u16, String>;
 fn create_bpe_token_decoder(
     encoder: HashMap<String, u16>,
 ) -> Result<BpeTokenDecoder, std::io::Error> {
-    let decoder: BpeTokenDecoder = encoder.into_iter().map(|(k, v)| (v, k)).collect();
+    let decoder: BpeTokenDecoder = encoder.into_par_iter().map(|(k, v)| (v, k)).collect();
 
     Ok(decoder)
 }
@@ -226,7 +228,8 @@ where
         + std::cmp::Eq
         + std::convert::From<u8>
         + std::convert::From<char>
-        + std::fmt::Debug,
+        + std::fmt::Debug
+        + std::marker::Sync,
 {
     fn new<P>(encoder_filename: P, vocab_filename: P) -> Tokenizer<T>
     where
@@ -252,24 +255,26 @@ where
         let text = text.into();
         let (_unmatched, pat_tokens) = pat(&text).unwrap();
 
-        let bpe_tokens: Vec<u16> = pat_tokens.into_iter().map(|token| {
-            let prepared_token: String = token
-                .chars()
-                .map(|c| self.byte_encoder[&c.into()])
-                .collect();
-            let bpe_results = self.bpe(prepared_token);
-            let new_bpe_tokens: Vec<u16> = bpe_results
-                .split(" ")
-                .map(|new_token| {
-                    let encoded_token = self.token_encoder[new_token];
-                    encoded_token
-                })
-                .collect();
-            new_bpe_tokens
-        }).flatten().collect();
+        let bpe_tokens: Vec<u16> = pat_tokens
+            .into_par_iter()
+            .map(|token| {
+                let prepared_token: String = token
+                    .chars()
+                    .map(|c| self.byte_encoder[&c.into()])
+                    .collect();
+                let bpe_results = self.bpe(prepared_token);
+                let new_bpe_tokens: Vec<u16> = bpe_results
+                    .split(" ")
+                    .map(|new_token| {
+                        let encoded_token = self.token_encoder[new_token];
+                        encoded_token
+                    })
+                    .collect();
+                new_bpe_tokens
+            })
+            .flatten()
+            .collect();
 
-        //dbg!(&bpe_tokens);
-        //dbg!(&bpe_tokens.into_iter().len());
         bpe_tokens
     }
 
@@ -335,6 +340,7 @@ where
                     break;
                 }
 
+                //TODO Not sure why we're comparing first, as it should be guaranteed
                 if i < word.len() - 1 && word[i] == first && word[i + 1] == second {
                     let combined = first.clone() + &second;
                     next_word.push(combined);
