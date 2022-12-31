@@ -72,11 +72,11 @@ fn pat(input: &str) -> IResult<&str, Vec<&str>> {
     )))(input)
 }
 
-fn is_valid_bpe_char<T>(i: T) -> bool
+fn is_valid_bpe_char<T>(c: T) -> bool
 where
     T: nom::AsChar + Copy, //TODO Or nom_unicode::IsChar?
 {
-    match i.as_char() {
+    match c.as_char() {
         '!'..='~' | '¡'..='¬' | '®'..='ÿ' => true,
         _ => false,
     }
@@ -113,7 +113,7 @@ where
     return map;
 }
 
-fn create_bpe_char_decoder<T>() -> HashMap<char, T>
+fn create_bpe_char_decoder<T>(encoder: HashMap<T, char>) -> HashMap<char, T>
 where
     T: nom::AsChar //TODO Or nom_unicode::IsChar?
         + Copy
@@ -122,9 +122,7 @@ where
         + std::convert::From<u8>
         + std::fmt::Debug,
 {
-    //TODO Determine if this is efficient
-    let map = create_bpe_char_encoder::<T>();
-    let decoder = map.into_iter().map(|(k, v)| (v, k)).collect();
+    let decoder = encoder.into_iter().map(|(k, v)| (v, k)).collect();
 
     //    dbg!(&decoder);
     return decoder;
@@ -146,12 +144,8 @@ where
 }
 
 type BpeTokenDecoder = HashMap<u16, String>;
-fn create_bpe_token_decoder<T>(filename: T) -> Result<BpeTokenDecoder, std::io::Error>
-where
-    T: AsRef<Path>,
+fn create_bpe_token_decoder(encoder: HashMap<String, u16>) -> Result<BpeTokenDecoder, std::io::Error>
 {
-    //TODO: Make more efficient
-    let encoder = create_bpe_token_encoder::<T>(filename)?;
     let decoder: BpeTokenDecoder = encoder.into_iter().map(|(k, v)| (v, k)).collect();
 
     Ok(decoder)
@@ -159,7 +153,7 @@ where
 
 type BpePair = (String, String);
 type BpeRanks = Vec<BpePair>;
-fn create_bpe_ranks<T>(filename: T) -> Result<BpeRanks, std::io::Error>
+fn create_bpe_ranks<T>(filename: T) -> Result<HashMap<BpePair, usize>, std::io::Error>
 where
     T: AsRef<Path>,
 {
@@ -182,7 +176,12 @@ where
         })
         .collect();
 
-    Ok(ranks)
+    let bpe_ranks = ranks.into_iter().enumerate().fold(HashMap::new(), |mut map, bpe_rank| {
+        map.insert(bpe_rank.1, bpe_rank.0);
+        map
+    });
+
+    Ok(bpe_ranks)
 }
 
 type BpeWord = Vec<String>;
@@ -229,21 +228,15 @@ where
     where
         P: AsRef<Path>,
     {
-        let bpe_rank_pairs = create_bpe_ranks(vocab_filename).unwrap();
-        let bpe_ranks =
-            bpe_rank_pairs
-                .into_iter()
-                .enumerate()
-                .fold(HashMap::new(), |mut map, bpe_rank| {
-                    map.insert(bpe_rank.1, bpe_rank.0);
-                    map
-                });
+        let token_encoder = create_bpe_token_encoder(encoder_filename).unwrap();
+        let byte_encoder = create_bpe_char_encoder::<T>();
+
         Tokenizer::<T> {
-            byte_encoder: create_bpe_char_encoder::<T>(),
-            byte_decoder: create_bpe_char_decoder::<T>(),
-            token_encoder: create_bpe_token_encoder(&encoder_filename).unwrap(),
-            token_decoder: create_bpe_token_decoder(&encoder_filename).unwrap(),
-            bpe_ranks,
+            byte_encoder: byte_encoder.clone(),
+            byte_decoder: create_bpe_char_decoder::<T>(byte_encoder),
+            token_encoder: token_encoder.clone(),
+            token_decoder: create_bpe_token_decoder(token_encoder).unwrap(),
+            bpe_ranks: create_bpe_ranks(vocab_filename).unwrap(),
         }
     }
 
