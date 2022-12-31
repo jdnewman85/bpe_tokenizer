@@ -272,6 +272,15 @@ where
         bpe_tokens
     }
 
+    fn detokenize(&self, tokens: Vec<u16>) -> String {
+        let decoded: Vec<String> = tokens.into_iter().map(|token| {
+            self.token_decoder[&token].clone()
+        }).collect();
+        let text = decoded.join("");
+        let text = text.chars().map(|c| self.byte_decoder.get(&c).unwrap().as_char()).collect();
+        text
+    }
+
     //TODO Rename
     fn bpe<S>(&self, token: S) -> String
     where
@@ -346,7 +355,11 @@ where
 
 fn main() {
     let tokenizer: Tokenizer<char> = Tokenizer::new("encoder.json", "vocab.bpe");
-    let tokens = tokenizer.tokenize("This is a test! y'all's alright?\nDo newlines work?!%? 1535");
+    let test_text = "This is a test! y'all's alright?\nDo newlines work?!%? 1535";
+    let tokens = tokenizer.tokenize(test_text);
     dbg!(&tokens);
     dbg!(&tokens.len());
+    let text = tokenizer.detokenize(tokens);
+    dbg!(&text);
+    assert!(&text == &test_text);
 }
