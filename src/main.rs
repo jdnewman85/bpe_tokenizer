@@ -252,10 +252,7 @@ where
         let text = text.into();
         let (_unmatched, pat_tokens) = pat(&text).unwrap();
 
-        let mut bpe_tokens: Vec<u16> = Vec::new();
-
-        println!("Creating bpe tokens");
-        for token in pat_tokens {
+        let bpe_tokens: Vec<u16> = pat_tokens.into_iter().map(|token| {
             let prepared_token: String = token
                 .chars()
                 .map(|c| self.byte_encoder[&c.into()])
@@ -268,8 +265,8 @@ where
                     encoded_token
                 })
                 .collect();
-            bpe_tokens.extend(new_bpe_tokens);
-        }
+            new_bpe_tokens
+        }).flatten().collect();
 
         //dbg!(&bpe_tokens);
         //dbg!(&bpe_tokens.into_iter().len());
