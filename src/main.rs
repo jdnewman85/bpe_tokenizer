@@ -200,16 +200,21 @@ fn bpe(token: String) -> String {
         //min pair of all of
         //For each in pairs
         //get from bpe_ranks, or inf
+        //TODO: The else check here is the same as pairs.is_empty() above
         let Some(bigram) = pairs.clone().into_iter().min_by_key(|pair| bpe_ranks.get(pair).unwrap_or(&std::usize::MAX)) else {
             break;
         };
+        if !bpe_ranks.contains_key(&bigram) {
+            break;
+        }
 
         let (first, second) = bigram;
         let mut next_word: BpeWord = Vec::new();
 
         let mut i = 0;
         while i < word.len() {
-            if let Some(j) = word.clone().into_iter().skip(i).position(|sym| sym==first) {
+            if let Some(mut j) = word.clone().into_iter().skip(i).position(|sym| sym==first) {
+                j += i; //(adjust for skip(i)
                 let slice = word[i..j].to_vec();
                 next_word.extend(slice);
                 i = j
@@ -219,7 +224,7 @@ fn bpe(token: String) -> String {
                 break;
             }
 
-            if i < word.len()-1 && word[i+1] == second {
+            if i < word.len()-1 && word[i] == first && word[i+1] == second {
                 let combined = first.clone()+&second;
                 next_word.push(combined);
                 i += 2;
@@ -242,59 +247,28 @@ fn bpe(token: String) -> String {
 }
 
 fn main() {
-    //println!("{:?}", pat("This is a test! y'all's allright?").unwrap());
-//    dbg!(pat("This is a test! y'all's allright?\nDo newlines work?!%? 1535").unwrap());
-//
-//    let bpe_char_encoder = create_bpe_char_encoder::<u8>();
-//    dbg!(bpe_char_encoder[&('A' as u8)]);
-//
-//    let bpe_char_encoder = create_bpe_char_encoder::<char>();
-//    let bpe_char_decoder = create_bpe_char_decoder::<char>();
-//    let space_encoded = bpe_char_encoder[&' '];
-//    dbg!(space_encoded);
-//    dbg!(bpe_char_decoder[&space_encoded]);
-//
-//    let bpe_token_encoder = create_bpe_token_encoder("encoder.json").unwrap();
-//    dbg!(&bpe_token_encoder);
-//    let bpe_token_decoder = create_bpe_token_decoder("encoder.json").unwrap();
-//    dbg!(&bpe_token_decoder);
-//
-//    let bpe_ranks = create_bpe_ranks("vocab.bpe");
-//    dbg!(&bpe_ranks);
-
-    /*
-    let test_pairs = generate_consecutive_pairs(&bpe_word_from_string("abcdefg"));
-    dbg!(test_pairs);
-
-    let test_pairs = generate_consecutive_pairs(&vec![
-        "This".to_string(),
-        "is".to_string(),
-        "a".to_string(),
-        "test".to_string(),
-    ]);
-    dbg!(test_pairs);
-    */
-
     //encode
-    let (_unmatched, pat_tokens) = pat("This is a test! y'all's allright?\nDo newlines work?!%? 1535").unwrap();
-
+    println!("Creating encoders");
     let bpe_char_encoder = create_bpe_char_encoder::<char>();
     let bpe_token_encoder = create_bpe_token_encoder("encoder.json").unwrap();
 
+    println!("Creating pat tokens");
+    let (_unmatched, pat_tokens) = pat("This is a test! y'all's alright?\nDo newlines work?!%? 1535").unwrap();
+
     let mut bpe_tokens:Vec<u16> = Vec::new();
 
+    println!("Creating bpe tokens");
     for token in pat_tokens {
         let prepared_token:String = token.chars().map(|c| bpe_char_encoder[&c]).collect();
         let bpe_results = bpe(prepared_token);
         let new_bpe_tokens:Vec<u16> = bpe_results.split(" ").map(|new_token| {
-            dbg!(new_token);
             let encoded_token = bpe_token_encoder[new_token];
-//            dbg!(encoded_token);
             encoded_token
         }).collect();
         bpe_tokens.extend(new_bpe_tokens);
     }
 
-    dbg!(bpe_tokens);
+    dbg!(&bpe_tokens);
+    dbg!(&bpe_tokens.into_iter().len());
 
 }
