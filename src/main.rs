@@ -144,8 +144,9 @@ where
 }
 
 type BpeTokenDecoder = HashMap<u16, String>;
-fn create_bpe_token_decoder(encoder: HashMap<String, u16>) -> Result<BpeTokenDecoder, std::io::Error>
-{
+fn create_bpe_token_decoder(
+    encoder: HashMap<String, u16>,
+) -> Result<BpeTokenDecoder, std::io::Error> {
     let decoder: BpeTokenDecoder = encoder.into_iter().map(|(k, v)| (v, k)).collect();
 
     Ok(decoder)
@@ -176,10 +177,13 @@ where
         })
         .collect();
 
-    let bpe_ranks = ranks.into_iter().enumerate().fold(HashMap::new(), |mut map, bpe_rank| {
-        map.insert(bpe_rank.1, bpe_rank.0);
-        map
-    });
+    let bpe_ranks = ranks
+        .into_iter()
+        .enumerate()
+        .fold(HashMap::new(), |mut map, bpe_rank| {
+            map.insert(bpe_rank.1, bpe_rank.0);
+            map
+        });
 
     Ok(bpe_ranks)
 }
@@ -273,11 +277,15 @@ where
     }
 
     fn detokenize(&self, tokens: Vec<u16>) -> String {
-        let decoded: Vec<String> = tokens.into_iter().map(|token| {
-            self.token_decoder[&token].clone()
-        }).collect();
+        let decoded: Vec<String> = tokens
+            .into_iter()
+            .map(|token| self.token_decoder[&token].clone())
+            .collect();
         let text = decoded.join("");
-        let text = text.chars().map(|c| self.byte_decoder.get(&c).unwrap().as_char()).collect();
+        let text = text
+            .chars()
+            .map(|c| self.byte_decoder.get(&c).unwrap().as_char())
+            .collect();
         text
     }
 
