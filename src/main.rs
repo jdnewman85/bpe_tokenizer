@@ -1,6 +1,6 @@
+use std::collections::{HashMap, HashSet};
+use std::io::{BufRead, BufReader, Read};
 use std::{fs::File, path::Path};
-use std::io::{BufRead, Read, BufReader};
-use std::collections::{HashSet, HashMap};
 
 use nom::{
     branch::alt,
@@ -33,7 +33,8 @@ where
         + nom::Offset
         + nom::Slice<std::ops::RangeFrom<usize>>
         + nom::Slice<std::ops::RangeTo<usize>>,
-    F: nom::Parser<I, O, E>, <I as InputIter>::Item: AsChar,
+    F: nom::Parser<I, O, E>,
+    <I as InputIter>::Item: AsChar,
 {
     recognize(pair(opt(char(' ')), f))
 }
@@ -59,32 +60,37 @@ fn opt_space_non_unicode_alphanumeric1(input: &str) -> IResult<&str, &str> {
 }
 
 fn pat(input: &str) -> IResult<&str, Vec<&str>> {
-//TODO: Should this slit on and consume newlines? I don't think so?
+    //TODO: Should this slit on and consume newlines? I don't think so?
     many1(alt((
         opt_space_contraction,
         opt_space_unicode_alpha1,
         opt_space_unicode_digit1,
         opt_space_non_unicode_alphanumeric1,
         /* Original regex has spaces before a non-space here, but that seems unneeded as it'd be
-        * caught by the space1, then one of the above on next match itteration? */
+         * caught by the space1, then one of the above on next match itteration? */
         nom_unicode::complete::space1,
     )))(input)
 }
 
 fn is_valid_bpe_char<T>(i: T) -> bool
-where T: nom::AsChar + Copy //TODO Or nom_unicode::IsChar?
+where
+    T: nom::AsChar + Copy, //TODO Or nom_unicode::IsChar?
 {
     match i.as_char() {
-        '!'..='~' |
-        '¡'..='¬' |
-        '®'..='ÿ' => true,
+        '!'..='~' | '¡'..='¬' | '®'..='ÿ' => true,
         _ => false,
     }
 }
 
 // Replaces bytes_to_unicode
 fn create_bpe_char_encoder<T>() -> HashMap<T, char>
-where T: nom::AsChar + Copy + std::hash::Hash + std::cmp::Eq + std::convert::From<u8> + std::fmt::Debug //TODO Or nom_unicode::IsChar?
+where
+    T: nom::AsChar //TODO Or nom_unicode::IsChar?
+        + Copy
+        + std::hash::Hash
+        + std::cmp::Eq
+        + std::convert::From<u8>
+        + std::fmt::Debug,
 {
     let mut map: HashMap<T, char> = HashMap::new();
 
@@ -97,30 +103,37 @@ where T: nom::AsChar + Copy + std::hash::Hash + std::cmp::Eq + std::convert::Fro
                 let map_to = 256 + n;
                 n += 1;
                 char::from_u32(map_to).unwrap()
-            },
+            }
         };
 
         map.insert(i.into(), cs);
     }
 
-//    dbg!(&map);
-    return map
+    //    dbg!(&map);
+    return map;
 }
 
 fn create_bpe_char_decoder<T>() -> HashMap<char, T>
-where T: nom::AsChar + Copy + std::hash::Hash + std::cmp::Eq + std::convert::From<u8> + std::fmt::Debug //TODO Or nom_unicode::IsChar?
+where
+    T: nom::AsChar //TODO Or nom_unicode::IsChar?
+        + Copy
+        + std::hash::Hash
+        + std::cmp::Eq
+        + std::convert::From<u8>
+        + std::fmt::Debug,
 {
     //TODO Determine if this is efficient
     let map = create_bpe_char_encoder::<T>();
     let decoder = map.into_iter().map(|(k, v)| (v, k)).collect();
 
-//    dbg!(&decoder);
-    return decoder
+    //    dbg!(&decoder);
+    return decoder;
 }
 
 type BpeTokenEncoder = HashMap<String, u16>;
 fn create_bpe_token_encoder<T>(filename: T) -> Result<BpeTokenEncoder, std::io::Error>
-where T: AsRef<Path>
+where
+    T: AsRef<Path>,
 {
     //TODO: Make more efficient
     let mut file = File::open(filename)?;
@@ -134,7 +147,8 @@ where T: AsRef<Path>
 
 type BpeTokenDecoder = HashMap<u16, String>;
 fn create_bpe_token_decoder<T>(filename: T) -> Result<BpeTokenDecoder, std::io::Error>
-where T: AsRef<Path>
+where
+    T: AsRef<Path>,
 {
     //TODO: Make more efficient
     let encoder = create_bpe_token_encoder::<T>(filename)?;
@@ -146,7 +160,8 @@ where T: AsRef<Path>
 type BpePair = (String, String);
 type BpeRanks = Vec<BpePair>;
 fn create_bpe_ranks<T>(filename: T) -> Result<BpeRanks, std::io::Error>
-where T: AsRef<Path>
+where
+    T: AsRef<Path>,
 {
     //TODO: Make more efficient
     let file = File::open(filename)?;
@@ -154,31 +169,44 @@ where T: AsRef<Path>
 
     //First line is version comment, hence skip(1)
     let num_comment_lines = 1;
-    let ranks: BpeRanks = reader.lines().skip(num_comment_lines).map(|line| {
-        let line = line.unwrap();
-        let mut split = line.split_whitespace();
-        (
-            split.next().unwrap().to_string(),
-            split.next().unwrap().to_string(),
-        )
-    }).collect();
+    let ranks: BpeRanks = reader
+        .lines()
+        .skip(num_comment_lines)
+        .map(|line| {
+            let line = line.unwrap();
+            let mut split = line.split_whitespace();
+            (
+                split.next().unwrap().to_string(),
+                split.next().unwrap().to_string(),
+            )
+        })
+        .collect();
 
     Ok(ranks)
 }
 
 type BpeWord = Vec<String>;
 fn generate_consecutive_pairs(word: &BpeWord) -> HashSet<BpePair> {
-    word.windows(2).map(|w| (w[0].to_owned(), w[1].to_owned())).collect()
+    word.windows(2)
+        .map(|w| (w[0].to_owned(), w[1].to_owned()))
+        .collect()
 }
 
 fn bpe_word_from_string<T>(s: T) -> BpeWord
-where T: Into<String>,
+where
+    T: Into<String>,
 {
     s.into().chars().map(|c| c.to_string()).collect()
 }
 
 struct Tokenizer<T>
-where T: nom::AsChar + Copy + std::hash::Hash + std::cmp::Eq + std::convert::From<u8> + std::fmt::Debug //TODO Or nom_unicode::IsChar?
+where
+    T: nom::AsChar //TODO Or nom_unicode::IsChar?
+        + Copy
+        + std::hash::Hash
+        + std::cmp::Eq
+        + std::convert::From<u8>
+        + std::fmt::Debug,
 {
     byte_encoder: HashMap<T, char>,
     byte_decoder: HashMap<char, T>,
@@ -188,17 +216,29 @@ where T: nom::AsChar + Copy + std::hash::Hash + std::cmp::Eq + std::convert::Fro
 }
 
 impl<T> Tokenizer<T>
-where T: nom::AsChar + Copy + std::hash::Hash + std::cmp::Eq + std::convert::From<u8> + std::convert::From<char> + std::fmt::Debug //TODO Or nom_unicode::IsChar?
+where
+    T: nom::AsChar //TODO Or nom_unicode::IsChar?
+        + Copy
+        + std::hash::Hash
+        + std::cmp::Eq
+        + std::convert::From<u8>
+        + std::convert::From<char>
+        + std::fmt::Debug,
 {
-    fn new<P>(encoder_filename: P, vocab_filename:P) -> Tokenizer<T>
-    where P: AsRef<Path>
+    fn new<P>(encoder_filename: P, vocab_filename: P) -> Tokenizer<T>
+    where
+        P: AsRef<Path>,
     {
         let bpe_rank_pairs = create_bpe_ranks(vocab_filename).unwrap();
-        let bpe_ranks = bpe_rank_pairs.into_iter().enumerate().fold(HashMap::new(), |mut map, bpe_rank| {
-            map.insert(bpe_rank.1, bpe_rank.0);
-            map
-        });
-        Tokenizer::<T>{
+        let bpe_ranks =
+            bpe_rank_pairs
+                .into_iter()
+                .enumerate()
+                .fold(HashMap::new(), |mut map, bpe_rank| {
+                    map.insert(bpe_rank.1, bpe_rank.0);
+                    map
+                });
+        Tokenizer::<T> {
             byte_encoder: create_bpe_char_encoder::<T>(),
             byte_decoder: create_bpe_char_decoder::<T>(),
             token_encoder: create_bpe_token_encoder(&encoder_filename).unwrap(),
@@ -208,24 +248,29 @@ where T: nom::AsChar + Copy + std::hash::Hash + std::cmp::Eq + std::convert::Fro
     }
 
     fn tokenize<S>(&self, text: S) -> Vec<u16>
-    where S: Into<String>,
+    where
+        S: Into<String>,
     {
         //TODO: Handle unmatched
         let text = text.into();
         let (_unmatched, pat_tokens) = pat(&text).unwrap();
 
-        let mut bpe_tokens:Vec<u16> = Vec::new();
+        let mut bpe_tokens: Vec<u16> = Vec::new();
 
         println!("Creating bpe tokens");
         for token in pat_tokens {
-            let prepared_token:String = token.chars().map(|c| {
-                self.byte_encoder[&c.into()]
-            }).collect();
+            let prepared_token: String = token
+                .chars()
+                .map(|c| self.byte_encoder[&c.into()])
+                .collect();
             let bpe_results = self.bpe(prepared_token);
-            let new_bpe_tokens:Vec<u16> = bpe_results.split(" ").map(|new_token| {
-                let encoded_token = self.token_encoder[new_token];
-                encoded_token
-            }).collect();
+            let new_bpe_tokens: Vec<u16> = bpe_results
+                .split(" ")
+                .map(|new_token| {
+                    let encoded_token = self.token_encoder[new_token];
+                    encoded_token
+                })
+                .collect();
             bpe_tokens.extend(new_bpe_tokens);
         }
 
@@ -236,7 +281,8 @@ where T: nom::AsChar + Copy + std::hash::Hash + std::cmp::Eq + std::convert::Fro
 
     //TODO Rename
     fn bpe<S>(&self, token: S) -> String
-    where S: Into<String>,
+    where
+        S: Into<String>,
     {
         //TODO Cache
         let token = token.into().clone();
@@ -249,11 +295,12 @@ where T: nom::AsChar + Copy + std::hash::Hash + std::cmp::Eq + std::convert::Fro
         }
 
         loop {
-            //min pair of all of
-            //For each in pairs
-            //get from bpe_ranks, or inf
             //TODO: The else check here is the same as pairs.is_empty() above
-            let Some(bigram) = pairs.clone().into_iter().min_by_key(|pair| self.bpe_ranks.get(pair).unwrap_or(&std::usize::MAX)) else {
+            let Some(bigram) = pairs.clone()
+                .into_iter()
+                .min_by_key(|pair| self.bpe_ranks.get(pair)
+                    .unwrap_or(&std::usize::MAX)
+            ) else {
                 break;
             };
             if !self.bpe_ranks.contains_key(&bigram) {
@@ -265,7 +312,12 @@ where T: nom::AsChar + Copy + std::hash::Hash + std::cmp::Eq + std::convert::Fro
 
             let mut i = 0;
             while i < word.len() {
-                if let Some(mut j) = word.clone().into_iter().skip(i).position(|sym| sym==first) {
+                if let Some(mut j) = word
+                    .clone()
+                    .into_iter()
+                    .skip(i)
+                    .position(|sym| sym == first)
+                {
                     j += i; //(adjust for skip(i)
                     let slice = word[i..j].to_vec();
                     next_word.extend(slice);
@@ -276,8 +328,8 @@ where T: nom::AsChar + Copy + std::hash::Hash + std::cmp::Eq + std::convert::Fro
                     break;
                 }
 
-                if i < word.len()-1 && word[i] == first && word[i+1] == second {
-                    let combined = first.clone()+&second;
+                if i < word.len() - 1 && word[i] == first && word[i + 1] == second {
+                    let combined = first.clone() + &second;
                     next_word.push(combined);
                     i += 2;
                 } else {
@@ -304,5 +356,4 @@ fn main() {
     let tokens = tokenizer.tokenize("This is a test! y'all's alright?\nDo newlines work?!%? 1535");
     dbg!(&tokens);
     dbg!(&tokens.len());
-
 }
