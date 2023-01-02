@@ -136,33 +136,37 @@ where
     s.into().chars().map(|c| c.to_string()).collect()
 }
 
-pub struct Tokenizer<T>
-where
-    T: nom::AsChar //TODO Or nom_unicode::IsChar?
-        + Copy
-        + std::hash::Hash
-        + std::cmp::Eq
-        + std::convert::From<u8>
-        + std::fmt::Debug,
+pub trait TokenizerType: nom::AsChar
+    + Copy
+    + std::hash::Hash
+    + std::cmp::Eq
+    + std::convert::From<u8>
+    + std::convert::From<char>
+    + std::fmt::Debug
+    + std::marker::Sync
+{}
+
+impl<T> TokenizerType for T
+where T: nom::AsChar
+    + Copy
+    + std::hash::Hash
+    + std::cmp::Eq
+    + std::convert::From<u8>
+    + std::convert::From<char>
+    + std::fmt::Debug
+    + std::marker::Sync
+{}
+
+pub struct Tokenizer<T: TokenizerType>
 {
-    byte_encoder: HashMap<T, char>,
-    byte_decoder: HashMap<char, T>,
-    token_encoder: HashMap<String, u16>,
-    token_decoder: HashMap<u16, String>,
-    bpe_ranks: HashMap<BpePair, usize>,
+    pub byte_encoder: HashMap<T, char>,
+    pub byte_decoder: HashMap<char, T>,
+    pub token_encoder: HashMap<String, u16>,
+    pub token_decoder: HashMap<u16, String>,
+    pub bpe_ranks: HashMap<BpePair, usize>,
 }
 
-impl<T> Tokenizer<T>
-where
-    T: nom::AsChar //TODO Or nom_unicode::IsChar?
-        + Copy
-        + std::hash::Hash
-        + std::cmp::Eq
-        + std::convert::From<u8>
-        + std::convert::From<char>
-        + std::fmt::Debug
-        + std::marker::Sync,
-{
+impl<T: TokenizerType> Tokenizer<T> {
     pub fn new<P>(encoder_filename: P, vocab_filename: P) -> Tokenizer<T>
     where
         P: AsRef<Path>,
