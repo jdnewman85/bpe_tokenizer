@@ -129,14 +129,15 @@ fn generate_consecutive_pairs(word: &BpeWord) -> HashSet<BpePair> {
         .collect()
 }
 
-fn bpe_word_from_string<T>(s: T) -> BpeWord
+fn bpe_word_from_string<S>(s: S) -> BpeWord
 where
-    T: Into<String>,
+    S: Into<String>,
 {
     s.into().chars().map(|c| c.to_string()).collect()
 }
 
-pub trait TokenizerType: nom::AsChar
+pub trait TokenizerType:
+    nom::AsChar
     + Copy
     + std::hash::Hash
     + std::cmp::Eq
@@ -144,21 +145,23 @@ pub trait TokenizerType: nom::AsChar
     + std::convert::From<char>
     + std::fmt::Debug
     + std::marker::Sync
-{}
-
-impl<T> TokenizerType for T
-where T: nom::AsChar
-    + Copy
-    + std::hash::Hash
-    + std::cmp::Eq
-    + std::convert::From<u8>
-    + std::convert::From<char>
-    + std::fmt::Debug
-    + std::marker::Sync
-{}
-
-pub struct Tokenizer<T: TokenizerType>
 {
+}
+
+impl<T> TokenizerType for T where
+    T: nom::AsChar
+        + Copy
+        + std::hash::Hash
+        + std::cmp::Eq
+        + std::convert::From<u8>
+        + std::convert::From<char>
+        + std::fmt::Debug
+        + std::marker::Sync
+{
+}
+
+#[derive(Clone)]
+pub struct Tokenizer<T: TokenizerType> {
     byte_encoder: HashMap<T, char>,
     byte_decoder: HashMap<char, T>,
     token_encoder: HashMap<String, u16>,
@@ -191,40 +194,34 @@ impl<T: TokenizerType> Tokenizer<T> {
         let text = text.into();
         let (_unmatched, pat_tokens) = pat::pat(&text).unwrap();
 
-        let bpe_tokens: Vec<u16> = pat_tokens
+        pat_tokens
             .into_par_iter()
-            .map(|token| {
-                let prepared_token: String = token
-                    .chars()
-                    .map(|c| self.byte_encoder[&c.into()])
-                    .collect();
-                let bpe_results = self.bpe(prepared_token);
-                let new_bpe_tokens: Vec<u16> = bpe_results
-                    .split(" ")
-                    .map(|new_token| {
-                        let encoded_token = self.token_encoder[new_token];
-                        encoded_token
-                    })
-                    .collect();
-                new_bpe_tokens
+            .flat_map(|token| {
+                self.bpe(
+                    token
+                        .chars()
+                        .map(|c| self.byte_encoder[&c.into()])
+                        .collect::<String>()
+                )
+                .split(" ")
+                .map(|new_token| {
+                    let encoded_token = self.token_encoder[new_token];
+                    encoded_token
+                })
+                .collect::<Vec<_>>()
             })
-            .flatten()
-            .collect();
-
-        bpe_tokens
+            .collect()
     }
 
     pub fn detokenize(&self, tokens: Vec<u16>) -> String {
-        let decoded: Vec<String> = tokens
+        tokens
             .into_iter()
             .map(|token| self.token_decoder[&token].clone())
-            .collect();
-        let text = decoded.join("");
-        let text = text
+            .collect::<Vec<_>>()
+            .join("")
             .chars()
             .map(|c| self.byte_decoder.get(&c).unwrap().as_char())
-            .collect();
-        text
+            .collect()
     }
 
     //TODO Rename
@@ -233,16 +230,13 @@ impl<T: TokenizerType> Tokenizer<T> {
         S: Into<String>,
     {
         //TODO Cache
-        let token = token.into().clone();
+        let token = token.into();
 
         let mut word = bpe_word_from_string(&token);
-        let mut pairs = generate_consecutive_pairs(&word);
-
-        if pairs.is_empty() {
-            return token.into();
-        }
 
         loop {
+            let pairs = generate_consecutive_pairs(&word);
+
             //TODO: The else check here is the same as pairs.is_empty() above
             let Some(bigram) = pairs.clone()
                 .into_iter()
@@ -291,11 +285,8 @@ impl<T: TokenizerType> Tokenizer<T> {
             if word.len() == 1 {
                 break;
             }
-
-            pairs = generate_consecutive_pairs(&word);
         }
 
-        let word = word.join(" ");
-        word
+        word.join(" ")
     }
 }

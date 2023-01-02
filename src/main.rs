@@ -1,7 +1,7 @@
 use std::io::BufRead;
 mod tokenizer;
-use std::path::PathBuf;
 use std::io;
+use std::path::PathBuf;
 
 use tokenizer::Tokenizer;
 
@@ -19,9 +19,9 @@ struct Args {
 }
 
 fn tokenize_lines<I>(t: Tokenizer<char>, lines: I)
-where I: Iterator<Item = String>,
+where
+    I: Iterator<Item = String>,
 {
-
     for line in lines {
         //dbg!(line);
         let tokens = t.tokenize(&line);
@@ -34,7 +34,6 @@ where I: Iterator<Item = String>,
         assert!(&text == &line);
     }
 }
-
 
 fn main() {
     let cli = Args::parse();
