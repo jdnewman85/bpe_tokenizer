@@ -7,8 +7,6 @@ use tokenizer::Tokenizer;
 
 use clap::Parser;
 
-use memuse::DynamicUsage;
-
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -45,21 +43,6 @@ fn main() {
     let vocab_filename = cli.vocab_filename.unwrap_or("vocab.bpe".into());
 
     let my_tokenizer: Tokenizer<char> = Tokenizer::new(encoder_filename, vocab_filename);
-
-    let byte_encoder = my_tokenizer.byte_encoder.dynamic_usage();
-    dbg!(byte_encoder);
-    let byte_decoder = my_tokenizer.byte_decoder.dynamic_usage();
-    dbg!(byte_decoder);
-    let token_encoder = my_tokenizer.token_encoder.dynamic_usage();
-    dbg!(token_encoder);
-    let token_decoder = my_tokenizer.token_decoder.dynamic_usage();
-    dbg!(token_decoder);
-    let bpe_ranks = my_tokenizer.bpe_ranks.dynamic_usage();
-    dbg!(bpe_ranks);
-
-    let sum = byte_encoder + byte_decoder + token_encoder + token_decoder + bpe_ranks;
-    dbg!(sum / 1024);
-    dbg!(sum / 1024 / 1024);
 
     if cli.input.is_some() {
         let lines = cli.input.into_iter();

@@ -159,11 +159,11 @@ where T: nom::AsChar
 
 pub struct Tokenizer<T: TokenizerType>
 {
-    pub byte_encoder: HashMap<T, char>,
-    pub byte_decoder: HashMap<char, T>,
-    pub token_encoder: HashMap<String, u16>,
-    pub token_decoder: HashMap<u16, String>,
-    pub bpe_ranks: HashMap<BpePair, usize>,
+    byte_encoder: HashMap<T, char>,
+    byte_decoder: HashMap<char, T>,
+    token_encoder: HashMap<String, u16>,
+    token_decoder: HashMap<u16, String>,
+    bpe_ranks: HashMap<BpePair, usize>,
 }
 
 impl<T: TokenizerType> Tokenizer<T> {
