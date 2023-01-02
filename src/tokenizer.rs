@@ -5,6 +5,7 @@ use std::{fs::File, path::Path};
 use rayon::prelude::*;
 
 mod pat;
+mod bpe;
 
 fn is_valid_bpe_char<T>(c: T) -> bool
 where
@@ -236,9 +237,7 @@ impl<T: TokenizerType> Tokenizer<T> {
 
         loop {
             let pairs = generate_consecutive_pairs(&word);
-
-            //TODO: The else check here is the same as pairs.is_empty() above
-            let Some(bigram) = pairs.clone()
+            let Some(bigram) = pairs
                 .into_iter()
                 .min_by_key(|pair| self.bpe_ranks.get(pair)
                     .unwrap_or(&std::usize::MAX)
