@@ -191,8 +191,12 @@ impl<T: TokenizerType> Tokenizer<T> {
     where
         S: Into<String>,
     {
-        //TODO: Handle unmatched
         let text = text.into();
+        if text.is_empty() {
+            return vec![];
+        }
+
+        //TODO: Handle unmatched
         let (_unmatched, pat_tokens) = pat::pat(&text).unwrap();
 
         pat_tokens

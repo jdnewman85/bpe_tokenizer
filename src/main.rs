@@ -27,8 +27,9 @@ fn main() {
     let my_tokenizer: Tokenizer<char> = Tokenizer::new(encoder_filename, vocab_filename);
 
     if cli.input.is_some() {
-        let lines = cli.input.into_iter();
-        my_tokenizer.tokenize_lines(lines);
+        let input = cli.input.unwrap();
+        //dbg!(&input);
+        dbg!(my_tokenizer.tokenize(input));
     } else {
         let stdin = io::stdin();
         let lines = stdin.lock().lines().map(|l| l.unwrap());
