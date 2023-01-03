@@ -198,7 +198,8 @@ impl<T: TokenizerType> Tokenizer<T> {
         pat_tokens
             .into_par_iter()
             .flat_map(|token| {
-                self.bpe(
+                self.bpe_new(
+                //self.bpe(
                     token
                         .chars()
                         .map(|c| self.byte_encoder[&c.into()])
@@ -278,7 +279,76 @@ impl<T: TokenizerType> Tokenizer<T> {
                     next_word.push(first.clone());
                     i += 1;
                 }
+                dbg!(&next_word);
             }
+
+            word = next_word;
+            if word.len() == 1 {
+                break;
+            }
+        }
+
+        word.join(" ")
+    }
+
+    fn bpe_new<S>(&self, token: S) -> String
+    where
+        S: Into<String>,
+    {
+        //TODO Cache
+        let token = token.into();
+
+        let mut word = bpe_word_from_string(&token);
+
+        loop {
+            let pairs = generate_consecutive_pairs(&word);
+            let Some(bigram) = pairs
+                .into_iter()
+                .min_by_key(|pair| self.bpe_ranks.get(pair)
+                    .unwrap_or(&std::usize::MAX)
+            ) else {
+                break;
+            };
+            if !self.bpe_ranks.contains_key(&bigram) {
+                break;
+            }
+
+            let (first, second) = bigram;
+            let mut next_word: BpeWord = Vec::new();
+
+            let mut word_iter = word.into_iter().peekable();
+            while let Some(symbol) = word_iter.next() {
+                if symbol == first {
+                    if word_iter.peek().is_some() {
+                    let next_symbol = word_iter.peek().unwrap();
+                        if *next_symbol == second {
+                            let next_symbol = word_iter.next().unwrap();
+                            next_word.push(symbol+&next_symbol);
+                            continue
+                        }
+                    }
+                }
+                next_word.push(symbol);
+            }
+            /*
+            let mut word_iter = word.windows(2).peekable();
+            while let Some(pair) = word_iter.next() {
+                let (a, b) = (pair[0].to_owned(), pair[1].to_owned());
+                dbg!(&a, &b);
+                if a == first && b == second {
+                    next_word.push(a+&b);
+                    word_iter.next();
+                } else {
+                    next_word.push(a);
+
+                    if word_iter.peek().is_none() {
+                        next_word.push(b);
+                    }
+                }
+
+                dbg!(&next_word);
+            }
+            */
 
             word = next_word;
             if word.len() == 1 {
