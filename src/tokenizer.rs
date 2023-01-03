@@ -198,7 +198,8 @@ impl<T: TokenizerType> Tokenizer<T> {
         pat_tokens
             .into_par_iter()
             .flat_map(|token| {
-                self.bpe_new(
+                self.bpe_new2(
+                //self.bpe_new(
                 //self.bpe(
                     token
                         .chars()
@@ -279,6 +280,56 @@ impl<T: TokenizerType> Tokenizer<T> {
                     next_word.push(first.clone());
                     i += 1;
                 }
+                dbg!(&next_word);
+            }
+
+            word = next_word;
+            if word.len() == 1 {
+                break;
+            }
+        }
+
+        word.join(" ")
+    }
+
+    fn bpe_new2<S>(&self, token: S) -> String
+    where
+        S: Into<String>,
+    {
+        //TODO Cache
+        let token = token.into();
+
+        let mut word = bpe_word_from_string(&token);
+
+        loop {
+            let pairs = generate_consecutive_pairs(&word);
+            let Some(bigram) = pairs
+                .into_iter()
+                .min_by_key(|pair| self.bpe_ranks.get(pair)
+                    .unwrap_or(&std::usize::MAX)
+            ) else {
+                break;
+            };
+            if !self.bpe_ranks.contains_key(&bigram) {
+                break;
+            }
+
+            let (first, second) = bigram;
+            let mut next_word: BpeWord = Vec::new();
+
+            let mut i = 0;
+            while i < word.len() {
+                if i == word.len()-1 {
+                        next_word.push(word[i].to_owned());
+                } else {
+                    if word[i] == first && word[i+1] == second {
+                        next_word.push(word[i].to_owned() + &word[i+1].to_owned());
+                        i += 1;
+                    } else {
+                        next_word.push(word[i].to_owned());
+                    }
+                }
+                i += 1;
                 dbg!(&next_word);
             }
 
