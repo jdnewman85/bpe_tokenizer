@@ -316,13 +316,14 @@ impl<T: TokenizerType> Tokenizer<T> {
             let (first, second) = bigram;
             let mut next_word: BpeWord = Vec::new();
 
-            let mut word_iter = word.into_iter().peekable();
-            while let Some(symbol) = word_iter.next() {
+            /*
+            let mut pairs = word.into_iter().peekable();
+            while let Some(symbol) = pairs.next() {
                 if symbol == first {
-                    if word_iter.peek().is_some() {
-                    let next_symbol = word_iter.peek().unwrap();
+                    if pairs.peek().is_some() {
+                    let next_symbol = pairs.peek().unwrap();
                         if *next_symbol == second {
-                            let next_symbol = word_iter.next().unwrap();
+                            let next_symbol = pairs.next().unwrap();
                             next_word.push(symbol+&next_symbol);
                             continue
                         }
@@ -330,25 +331,29 @@ impl<T: TokenizerType> Tokenizer<T> {
                 }
                 next_word.push(symbol);
             }
-            /*
-            let mut word_iter = word.windows(2).peekable();
-            while let Some(pair) = word_iter.next() {
-                let (a, b) = (pair[0].to_owned(), pair[1].to_owned());
-                dbg!(&a, &b);
+            */
+//            /*
+            let mut pairs = word.windows(2).peekable();
+            while let Some(pair) = pairs.next() {
+                let (a, b) = (pair[0].clone(), pair[1].clone());
                 if a == first && b == second {
                     next_word.push(a+&b);
-                    word_iter.next();
+                    let maybe_extra = pairs.next();
+                    let maybe_was_last = maybe_extra.is_some() && pairs.peek().is_none();
+                    if maybe_was_last {
+                        //maybe_extra was last pair, we must add its b component
+                        next_word.push(maybe_extra.unwrap()[1].clone());
+                    }
                 } else {
                     next_word.push(a);
 
-                    if word_iter.peek().is_none() {
+                    if pairs.peek().is_none() {
                         next_word.push(b);
                     }
                 }
 
-                dbg!(&next_word);
             }
-            */
+//            */
 
             word = next_word;
             if word.len() == 1 {
