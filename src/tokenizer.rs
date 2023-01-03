@@ -204,10 +204,9 @@ impl<T: TokenizerType> Tokenizer<T> {
                         .chars()
                         .map(|c| self.byte_encoder[&c.into()])
                         .collect::<String>()
-                )
-                .split(" ")
+                ).into_iter()
                 .map(|new_token| {
-                    let encoded_token = self.token_encoder[new_token];
+                    let encoded_token = self.token_encoder[&new_token];
                     encoded_token
                 })
                 .collect::<Vec<_>>()
@@ -291,7 +290,7 @@ impl<T: TokenizerType> Tokenizer<T> {
         word.join(" ")
     }
 
-    fn bpe_new<S>(&self, token: S) -> String
+    fn bpe_new<S>(&self, token: S) -> Vec<String>
     where
         S: Into<String>,
     {
@@ -333,6 +332,6 @@ impl<T: TokenizerType> Tokenizer<T> {
             }
         }
 
-        word.join(" ")
+        word
     }
 }
