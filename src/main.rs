@@ -18,23 +18,6 @@ struct Args {
     vocab_filename: Option<PathBuf>,
 }
 
-fn tokenize_lines<I>(t: Tokenizer<char>, lines: I)
-where
-    I: Iterator<Item = String>,
-{
-    for line in lines {
-        //dbg!(line);
-        let tokens = t.tokenize(&line);
-        dbg!(&tokens);
-        dbg!(&tokens.len());
-
-        //Sanity check TODO Remove?
-        let text = t.detokenize(tokens);
-        //dbg!(&text);
-        assert!(&text == &line);
-    }
-}
-
 fn main() {
     let cli = Args::parse();
 
@@ -45,10 +28,10 @@ fn main() {
 
     if cli.input.is_some() {
         let lines = cli.input.into_iter();
-        tokenize_lines(my_tokenizer, lines);
+        my_tokenizer.tokenize_lines(lines);
     } else {
         let stdin = io::stdin();
         let lines = stdin.lock().lines().map(|l| l.unwrap());
-        tokenize_lines(my_tokenizer, lines);
+        my_tokenizer.tokenize_lines(lines);
     };
 }

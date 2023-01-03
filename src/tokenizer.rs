@@ -170,6 +170,23 @@ impl<T: TokenizerType> Tokenizer<T> {
         }
     }
 
+    pub fn tokenize_lines<I>(&self, lines: I)
+    where
+        I: Iterator<Item = String>,
+    {
+        for line in lines {
+            //dbg!(line);
+            let tokens = self.tokenize(&line);
+            dbg!(&tokens);
+            dbg!(&tokens.len());
+
+            //Sanity check TODO Remove?
+            let text = self.detokenize(tokens);
+            //dbg!(&text);
+            assert!(&text == &line);
+        }
+    }
+
     pub fn tokenize<S>(&self, text: S) -> Vec<u16>
     where
         S: Into<String>,
