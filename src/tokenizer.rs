@@ -5,7 +5,6 @@ use std::{fs::File, path::Path};
 use rayon::prelude::*;
 
 mod pat;
-mod bpe;
 
 fn is_valid_bpe_char<T>(c: T) -> bool
 where
@@ -198,7 +197,7 @@ impl<T: TokenizerType> Tokenizer<T> {
         pat_tokens
             .into_par_iter()
             .flat_map(|token| {
-                self.bpe_new(
+                self.bpe(
                 //self.bpe(
                     token
                         .chars()
@@ -226,71 +225,7 @@ impl<T: TokenizerType> Tokenizer<T> {
     }
 
     //TODO Rename
-    fn bpe<S>(&self, token: S) -> String
-    where
-        S: Into<String>,
-    {
-        //TODO Cache
-        let token = token.into();
-
-        let mut word = bpe_word_from_string(&token);
-
-        loop {
-            let pairs = generate_consecutive_pairs(&word);
-            let Some(bigram) = pairs
-                .into_iter()
-                .min_by_key(|pair| self.bpe_ranks.get(pair)
-                    .unwrap_or(&std::usize::MAX)
-            ) else {
-                break;
-            };
-            if !self.bpe_ranks.contains_key(&bigram) {
-                break;
-            }
-
-            let (first, second) = bigram;
-            let mut next_word: BpeWord = Vec::new();
-
-            let mut i = 0;
-            while i < word.len() {
-                if let Some(mut j) = word
-                    .clone()
-                    .into_iter()
-                    .skip(i)
-                    .position(|sym| sym == first)
-                {
-                    j += i; //(adjust for skip(i)
-                    let slice = word[i..j].to_vec();
-                    next_word.extend(slice);
-                    i = j
-                } else {
-                    let slice = word[i..].to_vec();
-                    next_word.extend(slice);
-                    break;
-                }
-
-                //TODO Not sure why we're comparing first, as it should be guaranteed
-                if i < word.len() - 1 && word[i] == first && word[i + 1] == second {
-                    let combined = first.clone() + &second;
-                    next_word.push(combined);
-                    i += 2;
-                } else {
-                    next_word.push(first.clone());
-                    i += 1;
-                }
-                dbg!(&next_word);
-            }
-
-            word = next_word;
-            if word.len() == 1 {
-                break;
-            }
-        }
-
-        word.join(" ")
-    }
-
-    fn bpe_new<S>(&self, token: S) -> Vec<String>
+    fn bpe<S>(&self, token: S) -> Vec<String>
     where
         S: Into<String>,
     {
