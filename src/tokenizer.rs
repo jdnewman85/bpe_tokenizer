@@ -6,6 +6,30 @@ use rayon::prelude::*;
 
 mod pat;
 
+pub trait TokenizerType:
+    nom::AsChar
+    + Copy
+    + std::hash::Hash
+    + std::cmp::Eq
+    + std::convert::From<u8>
+    + std::convert::From<char>
+    + std::fmt::Debug
+    + std::marker::Sync
+{
+}
+
+impl<T> TokenizerType for T where
+    T: nom::AsChar
+        + Copy
+        + std::hash::Hash
+        + std::cmp::Eq
+        + std::convert::From<u8>
+        + std::convert::From<char>
+        + std::fmt::Debug
+        + std::marker::Sync
+{
+}
+
 fn is_valid_bpe_char<T>(c: T) -> bool
 where
     T: nom::AsChar + Copy, //TODO Or nom_unicode::IsChar?
@@ -17,15 +41,7 @@ where
 }
 
 // Replaces bytes_to_unicode
-fn create_bpe_char_encoder<T>() -> HashMap<T, char>
-where
-    T: nom::AsChar //TODO Or nom_unicode::IsChar?
-        + Copy
-        + std::hash::Hash
-        + std::cmp::Eq
-        + std::convert::From<u8>
-        + std::fmt::Debug,
-{
+fn create_bpe_char_encoder<T: TokenizerType>() -> HashMap<T, char> {
     let mut map: HashMap<T, char> = HashMap::new();
 
     let mut n: u32 = 0; //Current offset
@@ -47,15 +63,7 @@ where
     return map;
 }
 
-fn create_bpe_char_decoder<T>(encoder: HashMap<T, char>) -> HashMap<char, T>
-where
-    T: nom::AsChar //TODO Or nom_unicode::IsChar?
-        + Copy
-        + std::hash::Hash
-        + std::cmp::Eq
-        + std::convert::From<u8>
-        + std::fmt::Debug,
-{
+fn create_bpe_char_decoder<T: TokenizerType>(encoder: HashMap<T, char>) -> HashMap<char, T> {
     let decoder = encoder.into_iter().map(|(k, v)| (v, k)).collect();
 
     //    dbg!(&decoder);
@@ -136,30 +144,6 @@ where
     s.into().chars().map(|c| c.to_string()).collect()
 }
 
-pub trait TokenizerType:
-    nom::AsChar
-    + Copy
-    + std::hash::Hash
-    + std::cmp::Eq
-    + std::convert::From<u8>
-    + std::convert::From<char>
-    + std::fmt::Debug
-    + std::marker::Sync
-{
-}
-
-impl<T> TokenizerType for T where
-    T: nom::AsChar
-        + Copy
-        + std::hash::Hash
-        + std::cmp::Eq
-        + std::convert::From<u8>
-        + std::convert::From<char>
-        + std::fmt::Debug
-        + std::marker::Sync
-{
-}
-
 #[derive(Clone)]
 pub struct Tokenizer<T: TokenizerType> {
     byte_encoder: HashMap<T, char>,
@@ -198,12 +182,13 @@ impl<T: TokenizerType> Tokenizer<T> {
             .into_par_iter()
             .flat_map(|token| {
                 self.bpe(
-                //self.bpe(
+                    //self.bpe(
                     token
                         .chars()
                         .map(|c| self.byte_encoder[&c.into()])
-                        .collect::<String>()
-                ).into_iter()
+                        .collect::<String>(),
+                )
+                .into_iter()
                 .map(|new_token| {
                     let encoded_token = self.token_encoder[&new_token];
                     encoded_token
@@ -254,8 +239,8 @@ impl<T: TokenizerType> Tokenizer<T> {
             while let Some(symbol) = pairs.next() {
                 if symbol == first && pairs.peek().is_some() {
                     if pairs.peek().unwrap().as_str() == second {
-                        next_word.push(symbol+&pairs.next().unwrap());
-                        continue
+                        next_word.push(symbol + &pairs.next().unwrap());
+                        continue;
                     }
                 }
                 next_word.push(symbol);
