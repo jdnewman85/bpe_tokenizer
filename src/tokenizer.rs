@@ -198,8 +198,6 @@ impl<T: TokenizerType> Tokenizer<T> {
         pat_tokens
             .into_par_iter()
             .flat_map(|token| {
-                //self.bpe_new3(
-                //self.bpe_new2(
                 self.bpe_new(
                 //self.bpe(
                     token
@@ -293,110 +291,6 @@ impl<T: TokenizerType> Tokenizer<T> {
         word.join(" ")
     }
 
-    fn bpe_new2<S>(&self, token: S) -> String
-    where
-        S: Into<String>,
-    {
-        //TODO Cache
-        let token = token.into();
-
-        let mut word = bpe_word_from_string(&token);
-
-        loop {
-            let pairs = generate_consecutive_pairs(&word);
-            let Some(bigram) = pairs
-                .into_iter()
-                .min_by_key(|pair| self.bpe_ranks.get(pair)
-                    .unwrap_or(&std::usize::MAX)
-            ) else {
-                break;
-            };
-            if !self.bpe_ranks.contains_key(&bigram) {
-                break;
-            }
-
-            let (first, second) = bigram;
-            let mut next_word: BpeWord = Vec::new();
-
-            let mut i = 0;
-            while i < word.len() { //Can't be a for because of i += 1
-                if i == word.len()-1 {
-                    next_word.push(word[i].to_owned());
-                    break;
-                }
-
-                if word[i] == first && word[i+1] == second {
-                    next_word.push(word[i].to_owned() + &word[i+1].to_owned());
-                    i += 1;
-                } else {
-                    next_word.push(word[i].to_owned());
-                }
-                i += 1;
-                dbg!(&next_word);
-            }
-
-            word = next_word;
-            if word.len() == 1 {
-                break;
-            }
-        }
-
-        word.join(" ")
-    }
-
-    fn bpe_new3<S>(&self, token: S) -> String
-    where
-        S: Into<String>,
-    {
-        //TODO Cache
-        let token = token.into();
-
-        let mut word = bpe_word_from_string(&token);
-
-        loop {
-            let pairs = generate_consecutive_pairs(&word);
-            let Some(bigram) = pairs
-                .into_iter()
-                .min_by_key(|pair| self.bpe_ranks.get(pair)
-                    .unwrap_or(&std::usize::MAX)
-            ) else {
-                break;
-            };
-            if !self.bpe_ranks.contains_key(&bigram) {
-                break;
-            }
-
-            let (first, second) = bigram;
-            let mut next_word: BpeWord = Vec::new();
-
-            let mut last_symbol: String = "".to_owned();
-            for i in 0..word.len() {
-                let current_symbol = word[i].clone();
-                if last_symbol == first && current_symbol == second {
-                    next_word.push(last_symbol+&current_symbol);
-                    last_symbol = "".to_owned();
-                } else if last_symbol != "" {
-                    next_word.push(last_symbol);
-                    last_symbol = current_symbol;
-                }
-
-                if i == word.len()-1 && last_symbol != "" {
-                    next_word.push(last_symbol);
-                    break;
-                }
-
-                dbg!(&next_word);
-            }
-
-            word = next_word;
-            if word.len() == 1 {
-                break;
-            }
-        }
-
-        word.join(" ")
-    }
-
     fn bpe_new<S>(&self, token: S) -> String
     where
         S: Into<String>,
@@ -409,8 +303,7 @@ impl<T: TokenizerType> Tokenizer<T> {
         loop {
             let pairs = generate_consecutive_pairs(&word);
             //TODO Could maintain a sorted list of these bigrams...
-            let Some(bigram) = pairs
-                .into_iter()
+            let Some(bigram) = pairs.into_iter()
                 .min_by_key(|pair| self.bpe_ranks.get(pair)
                     .unwrap_or(&std::usize::MAX)
             ) else {
@@ -423,65 +316,16 @@ impl<T: TokenizerType> Tokenizer<T> {
             let (first, second) = bigram;
             let mut next_word: BpeWord = Vec::new();
 
-//            /*
             let mut pairs = word.into_iter().peekable();
             while let Some(symbol) = pairs.next() {
-                let more_avail = pairs.peek().is_some();
-                let match_first = symbol == first;
-                if match_first && more_avail {
-                    let next_symbol = pairs.peek().unwrap();
-                    let match_second = *next_symbol == second;
-                    if match_second {
-                        let next_symbol = pairs.next().unwrap();
-                        next_word.push(symbol+&next_symbol);
+                if symbol == first && pairs.peek().is_some() {
+                    if pairs.peek().unwrap().as_str() == second {
+                        next_word.push(symbol+&pairs.next().unwrap());
                         continue
                     }
                 }
                 next_word.push(symbol);
             }
-            /*
-            let mut pairs = word.into_iter().peekable();
-            while let Some(symbol) = pairs.next() {
-                if symbol == first {
-                    if pairs.peek().is_some() {
-                    let next_symbol = pairs.peek().unwrap();
-                        if *next_symbol == second {
-                            let next_symbol = pairs.next().unwrap();
-                            next_word.push(symbol+&next_symbol);
-                            continue
-                        }
-                    }
-                }
-                next_word.push(symbol);
-            }
-*/
-
-//            */
-            /*
-            let mut pairs = word.windows(2).peekable();
-            while let Some(pair) = pairs.next() {
-                let (a, b) = (pair[0].clone(), pair[1].clone());
-                let is_match = a == first && b == second;
-
-                if is_match {
-                    next_word.push(a+&b);
-                    let maybe_extra = pairs.next();
-                    let maybe_was_last = maybe_extra.is_some() && pairs.peek().is_none();
-                    if maybe_was_last {
-                        //maybe_extra was last pair, we must add its b component
-                        next_word.push(maybe_extra.unwrap()[1].clone());
-                    }
-                } else {
-                    next_word.push(a);
-
-                    let was_last = pairs.peek().is_none();
-                    if was_last {
-                        next_word.push(b);
-                    }
-                }
-
-            }
-            */
 
             word = next_word;
             if word.len() == 1 {
