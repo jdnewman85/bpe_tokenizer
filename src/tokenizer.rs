@@ -144,7 +144,7 @@ where
     s.into().chars().map(|c| c.to_string()).collect()
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Tokenizer<T: TokenizerType> {
     byte_encoder: HashMap<T, char>,
     byte_decoder: HashMap<char, T>,
