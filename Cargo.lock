@@ -131,6 +131,7 @@ dependencies = [
  "nom-unicode",
  "rayon",
  "rocket",
+ "serde",
  "serde_json",
 ]
 
