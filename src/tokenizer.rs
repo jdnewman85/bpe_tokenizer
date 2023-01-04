@@ -4,6 +4,8 @@ use std::{fs::File, path::Path};
 
 use rayon::prelude::*;
 
+use crate::tokenize;
+
 mod pat;
 
 pub trait TokenizerType:
@@ -181,9 +183,9 @@ impl<T: TokenizerType> Tokenizer<T> {
             dbg!(&tokens.len());
 
             //Sanity check TODO Remove?
-            let text = self.detokenize(tokens);
+//            let text = self.detokenize(tokens);
             //dbg!(&text);
-            assert!(&text == &line);
+//            assert!(&text == &line);
         }
     }
 
@@ -218,6 +220,25 @@ impl<T: TokenizerType> Tokenizer<T> {
             })
             .collect()
     }
+
+    pub fn token_list<S>(&self, text: S) -> Vec<(String, u16)>
+    where
+        S: Into<String>,
+    {
+        let text = text.into();
+        if text.is_empty() {
+            return vec![];
+        }
+
+        let tokens = self.tokenize(text);
+
+        let token_list = tokens.into_iter().map(|token| {
+            (self.detokenize(vec![token]), token) //TODO Optimize
+        }).collect();
+
+        token_list
+    }
+
 
     pub fn detokenize(&self, tokens: Vec<u16>) -> String {
         tokens

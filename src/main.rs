@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::BufRead;
 mod tokenizer;
 use std::path::PathBuf;
@@ -50,6 +51,11 @@ fn tokenize(input: &str, tokenizer_state: &State<TokenizerState<char>>) -> Json<
     Json(tokenizer_state.tokenizer_arc.tokenize(input))
 }
 
+#[get("/tokenize_new/<input>")]
+fn tokenize_new(input: &str, tokenizer_state: &State<TokenizerState<char>>) -> Json<Vec<(String,u16)>> {
+    Json(tokenizer_state.tokenizer_arc.token_list(input))
+}
+
 //#[launch]
 //fn rocket() -> _ {
 #[rocket::main]
@@ -65,7 +71,7 @@ async fn main() -> Result<(), rocket::Error> {
     if cli.serve {
         let _rocket = rocket::build()
             .manage(TokenizerState::<char> { tokenizer_arc })
-            .mount("/", routes![index, hello, tokenize])
+            .mount("/", routes![index, hello, tokenize, tokenize_new])
             .launch()
             .await?;
     } else if cli.input.is_some() {
