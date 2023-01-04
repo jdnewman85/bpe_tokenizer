@@ -7,6 +7,8 @@ use tokenizer::Tokenizer;
 
 use clap::Parser;
 
+#[macro_use] extern crate rocket;
+
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -19,9 +21,20 @@ struct Args {
     encoder_filename: Option<PathBuf>,
     #[arg(short, long, value_name = "default: vocab.bpe")]
     vocab_filename: Option<PathBuf>,
+
+    #[arg(short, long)]
+    serve: bool, //TODO IP/Port
 }
 
-fn main() {
+#[get("/")]
+fn index() -> &'static str {
+    "Hello, wolrd!"
+}
+
+//#[launch]
+//fn rocket() -> _ {
+#[rocket::main]
+async fn main() -> Result<(), rocket::Error> {
     let cli = Args::parse();
 
     let encoder_filename = cli.encoder_filename.unwrap_or("encoder.json".into());
@@ -29,7 +42,9 @@ fn main() {
 
     let my_tokenizer: Tokenizer<char> = Tokenizer::new(encoder_filename, vocab_filename);
 
-    if cli.input.is_some() {
+    if cli.serve {
+        let _rocket = rocket::build().mount("/", routes![index]).launch().await?;
+    } else if cli.input.is_some() {
         let input = cli.input.unwrap();
         //dbg!(&input);
         let tokens = my_tokenizer.tokenize(input);
@@ -47,4 +62,6 @@ fn main() {
         let lines = stdin.lock().lines().map(|l| l.unwrap());
         my_tokenizer.tokenize_lines(lines);
     };
+
+    Ok(())
 }
