@@ -8,9 +8,11 @@ use tokenizer::{Tokenizer, TokenizerType};
 
 use clap::Parser;
 
+use rocket::serde::json::Json;
 use rocket::State;
 
-#[macro_use] extern crate rocket;
+#[macro_use]
+extern crate rocket;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -29,7 +31,7 @@ struct Args {
     serve: bool, //TODO IP/Port
 }
 
-struct TokenizerState<T:TokenizerType> {
+struct TokenizerState<T: TokenizerType> {
     tokenizer_arc: Arc<Tokenizer<T>>,
 }
 
@@ -44,13 +46,8 @@ fn hello(name: &str) -> String {
 }
 
 #[get("/tokenize/<input>")]
-fn tokenize(input: &str, tokenizer_state: &State<TokenizerState<char>>) -> String {
-    let t = &tokenizer_state.tokenizer_arc;
-
-    let tokens = t.tokenize(input);
-    let as_text = format!("Tokens:\n{:?}", tokens);
-
-    as_text
+fn tokenize(input: &str, tokenizer_state: &State<TokenizerState<char>>) -> Json<Vec<u16>> {
+    Json(tokenizer_state.tokenizer_arc.tokenize(input))
 }
 
 //#[launch]
@@ -67,9 +64,10 @@ async fn main() -> Result<(), rocket::Error> {
 
     if cli.serve {
         let _rocket = rocket::build()
-            .manage(TokenizerState::<char>{ tokenizer_arc })
+            .manage(TokenizerState::<char> { tokenizer_arc })
             .mount("/", routes![index, hello, tokenize])
-            .launch().await?;
+            .launch()
+            .await?;
     } else if cli.input.is_some() {
         let input = cli.input.unwrap();
         //dbg!(&input);
