@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read};
 use std::{fs::File, path::Path};
 
@@ -131,7 +131,7 @@ where
 }
 
 type BpeWord = Vec<String>;
-fn generate_consecutive_pairs(word: &BpeWord) -> HashSet<BpePair> {
+fn generate_consecutive_pairs(word: &BpeWord) -> Vec<BpePair> {
     word.windows(2)
         .map(|w| (w[0].to_owned(), w[1].to_owned()))
         .collect()
@@ -223,8 +223,7 @@ impl<T: TokenizerType> Tokenizer<T> {
         tokens
             .into_iter()
             .map(|token| self.token_decoder[&token].clone())
-            .collect::<Vec<_>>()
-            .join("")
+            .collect::<String>()
             .chars()
             .map(|c| self.byte_decoder.get(&c).unwrap().as_char())
             .collect()

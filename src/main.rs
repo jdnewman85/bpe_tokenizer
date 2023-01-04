@@ -1,7 +1,7 @@
 use std::io::BufRead;
 mod tokenizer;
-use std::io;
 use std::path::PathBuf;
+use std::{fs, io};
 
 use tokenizer::Tokenizer;
 
@@ -11,6 +11,9 @@ use clap::Parser;
 #[command(author, version, about, long_about = None)]
 struct Args {
     input: Option<String>,
+
+    #[arg(short, long, value_name = "Input File")]
+    input_filename: Option<PathBuf>,
 
     #[arg(short, long, value_name = "default: encoder.json")]
     encoder_filename: Option<PathBuf>,
@@ -29,7 +32,16 @@ fn main() {
     if cli.input.is_some() {
         let input = cli.input.unwrap();
         //dbg!(&input);
-        dbg!(my_tokenizer.tokenize(input));
+        let tokens = my_tokenizer.tokenize(input);
+        dbg!(&tokens);
+        dbg!(tokens.len());
+    } else if let Some(input_filename) = cli.input_filename {
+        //TODO Stream in?
+        let input = fs::read_to_string(input_filename).unwrap();
+        //dbg!(&input);
+        let tokens = my_tokenizer.tokenize(input);
+        dbg!(&tokens);
+        dbg!(tokens.len());
     } else {
         let stdin = io::stdin();
         let lines = stdin.lock().lines().map(|l| l.unwrap());
