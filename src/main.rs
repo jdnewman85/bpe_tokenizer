@@ -29,7 +29,7 @@ struct Args {
     vocab_filename: Option<PathBuf>,
 
     #[arg(short, long)]
-    serve: bool, //TODO IP/Port
+    serve: bool,
 }
 
 struct TokenizerState<T: TokenizerType> {
@@ -80,6 +80,14 @@ async fn main() -> Result<(), rocket::Error> {
     let tokenizer_arc = Arc::new(tokenizer_ref);
 
     if cli.serve {
+        /*
+        TODO: Add args for address/port and if provided, override here
+        let config = Config {
+            port: 9000,
+            ..Config::debug_default()
+        };
+        let _rocket = rocket::custom(&config)
+        */
         let _rocket = rocket::build()
             .manage(TokenizerState::<char> { tokenizer_arc })
             .mount("/", routes![index, hello, tokenize, tokenize_new, tokenize_new_json])
