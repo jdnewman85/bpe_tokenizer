@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::{fs, io};
 
 use rocket::serde::Deserialize;
-use tokenizer::{Tokenizer, TokenizerType};
+use tokenizer::{Tokenizer, TokenizerType, TokenizeOutput};
 
 use clap::Parser;
 
@@ -52,7 +52,7 @@ fn tokenize(input: &str, tokenizer_state: &State<TokenizerState<char>>) -> Json<
 }
 
 #[get("/tokenize_new/<input>")]
-fn tokenize_new(input: &str, tokenizer_state: &State<TokenizerState<char>>) -> Json<Vec<(String,u16)>> {
+fn tokenize_new(input: &str, tokenizer_state: &State<TokenizerState<char>>) -> Json<Vec<TokenizeOutput>> {
     Json(tokenizer_state.tokenizer_arc.token_list(input))
 }
 
@@ -63,7 +63,7 @@ struct RequestInput {
 }
 
 #[post("/tokenize_new", data="<input>")]
-fn tokenize_new_json(input: Json<RequestInput>, tokenizer_state: &State<TokenizerState<char>>) -> Json<Vec<(String,u16)>> {
+fn tokenize_new_json(input: Json<RequestInput>, tokenizer_state: &State<TokenizerState<char>>) -> Json<Vec<TokenizeOutput>> {
     Json(tokenizer_state.tokenizer_arc.token_list(&input.input))
 }
 

@@ -4,7 +4,15 @@ use std::{fs::File, path::Path};
 
 use rayon::prelude::*;
 
-use crate::tokenize;
+use rocket::serde::Serialize;
+
+#[derive(Serialize)]
+pub struct TokenizeOutput {
+    symbol: String,
+    token: u16,
+    start_pos: u16,
+    end_pos: u16,
+}
 
 mod pat;
 
@@ -221,7 +229,7 @@ impl<T: TokenizerType> Tokenizer<T> {
             .collect()
     }
 
-    pub fn token_list<S>(&self, text: S) -> Vec<(String, u16)>
+    pub fn token_list<S>(&self, text: S) -> Vec<TokenizeOutput>
     where
         S: Into<String>,
     {
@@ -233,7 +241,12 @@ impl<T: TokenizerType> Tokenizer<T> {
         let tokens = self.tokenize(text);
 
         let token_list = tokens.into_iter().map(|token| {
-            (self.detokenize(vec![token]), token) //TODO Optimize
+            TokenizeOutput {
+                symbol: self.detokenize(vec![token]), //Optimize
+                token,
+                start_pos: 0, //TODO
+                end_pos: 0,
+            }
         }).collect();
 
         token_list
